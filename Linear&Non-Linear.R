@@ -1,11 +1,11 @@
-setwd("C:/users/daisu/OneDrive/Desktop")
+setwd("C:/users/daisu/OneDrive/Desktop/DSTI/ASML")
 A = read.table("Chenilles.txt", header=TRUE)
 head(A)
 
 y = A$NbNids
 ncol(A)
 X = A[,1:10]
-L=lm(Y~X)
+L=lm(y ~., data=X)
 
 #You see the residual is symmetry, but the gaussianity of the model
 #is not obvious just by looking at residuals
@@ -28,7 +28,7 @@ plot(L)
 #null hypothesis=Standardized residuals are gaussian
 #We can accept the gaussianity of the model
 sres=rstandard(L)
-ks.test(X, y)
+ks.test(sres, "pnorm")
 
 #To see the additional info
 #Look at P-value of the residual to check if we can use the linear model
@@ -45,7 +45,7 @@ cor(X)
 #Now we can apply the variable selection in the frame of linear model
 #Fisher-criterion(Forward, Backward) and Akaike info-criterion
 #L is the biggest
-L0 = lm(log(Y)~1,data=X) #Individual intercept is not consistent with a whole one
+L0 = lm(log(y)~1,data=X) #Individual intercept is not consistent with a whole one
 
 #You see the one variable + intercept
 #Now you see the F-value, that is to say the model, H_0 is small model
@@ -60,7 +60,7 @@ Lv = step(L0, scope=list(lower=L0, upper=L), data=X, direction="forward", test="
 #Create the new model with useful
 
 #Backward F
-here
+Lv = step(L, data=X, test="F")
 
 #Now there are two different models
 #How can I see which model is better in the setting
@@ -79,6 +79,8 @@ here
 library(glmnet)
 La = glmnet(as.matrix(X),y, alpha = 0)
 
+
+summary(La)
 #Lasso keeps some variables to zero
 plot(La)
 
@@ -89,9 +91,10 @@ La$lambda
 
 Lambda=cv.glmnet(as.matrix(X), y, alpha=1)
 names(Lambda)
-bl=Lambda$lambda.lse
+bl=Lambda$lambda.1se
 La=glmnet(as.matrix(X), y, alpha=1, lambda = bl)
 
+summary(La)
 
 #Here the selected variables are non-zeros
 #Now the question is am I going to use those coefficients?
@@ -106,5 +109,14 @@ coefficients(La)
 
 library(rpart)
 T=rpart(y~.,data=X, cp=0, minsplit=2)
+plotcp(T)
 
+library(VSURF)
+
+TV = VSURF(log(y)~., data=X)
+plot(TV)
+
+names(TV)
+TV[[1]]
+TV[[2]]
 
