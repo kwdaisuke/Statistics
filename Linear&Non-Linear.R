@@ -26,7 +26,8 @@ plot(L)
 #Standardize first
 #P-value is big, so H_0, 
 #null hypothesis=Standardized residuals are gaussian
-#We can accept the gaussianity of the model
+#We can accept the gaussianity of the noise
+## Noise != Residual, if residual is gaussian, noise is gaussian
 sres=rstandard(L)
 ks.test(sres, "pnorm")
 
@@ -35,7 +36,7 @@ ks.test(sres, "pnorm")
 #Check R^2 to see the goodness of fit
 #The difference between r^2 and adjusted are from variables which are redundant
 #Adjusted R^2 score 
-#Look at P-value of each variable, high P-value is H_0, high correlation
+#Look at P-value of each variable, high P-value is H_0, zero coefficients
 summary(L)
 
 #Look at correlation now
@@ -78,26 +79,24 @@ Lv = step(L, data=X, test="F")
 #You start with lambda=0(classical least square) to lambda = max
 library(glmnet)
 La = glmnet(as.matrix(X),y, alpha = 0)
-
-
-summary(La)
 #Lasso keeps some variables to zero
 plot(La)
 
 #How am going to select the best lambda?
 #We consider the threshold value
-
 La$lambda
 
 Lambda=cv.glmnet(as.matrix(X), y, alpha=1)
 names(Lambda)
-bl=Lambda$lambda.1se
-La=glmnet(as.matrix(X), y, alpha=1, lambda = bl)
+#1se rule, to see the find the best lambda
+b1=Lambda$lambda.1se
+La=glmnet(as.matrix(X), y, alpha=1, lambda = b1)
 
 summary(La)
 
 #Here the selected variables are non-zeros
 #Now the question is am I going to use those coefficients?
+# No, we need to determine the selected variables and construct the moodel again
 coefficients(La)
 
 #In addition, we can use non-linear model: Random Forest
@@ -108,15 +107,33 @@ coefficients(La)
 
 
 library(rpart)
+# default: cp=0, minsplit=2
 T=rpart(y~.,data=X, cp=0, minsplit=2)
+# We cannot use this as it's too complex and bad prevision, therefore
+# We perform pruning, instead
+# thirty different models are displayed here
+printcp(T)
+# cp = Cross Validation error, increasing and decreasing
+# tree sizes=22 is overfitting
+# Add 2 and 22 and make a new set 
+
 plotcp(T)
 
-library(VSURF)
+# VSURF can be used for the variable selection
 
+#Select the smallest std error
+# W = std
+# E = rk of the explanatory variable
+# W = f(E) to estimate it with a CART 
+library(VSURF)
 TV = VSURF(log(y)~., data=X)
 plot(TV)
 
 names(TV)
+# Suppress several variables which are noises
 TV[[1]]
-TV[[2]]
 
+# 2 and 3 interpretation(select model with smallest OOB-error)
+# and prediction(included in the interpretation part)
+TV[[2]]
+TV[[3]]
